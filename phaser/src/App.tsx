@@ -26,60 +26,82 @@ const GlobalStyles = createGlobalStyle`
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #e0e0e0; /* Colore di sfondo per la pagina */
-  }
-`;
-
-const DarkTheme = createGlobalStyle`
-  body {
-    background-color: #2b2b2b; /* Background scuro */
-    color: #f1f1f1; /* Testo chiaro */
-  }
-  .window {
-    background-color: #333333; /* Finestra scura */
-  }
-  .window-header {
-    background-color: #444444; /* Header scuro */
-    color: #f1f1f1; /* Testo chiaro nell'header */
-  }
-  .frame {
-    background-color: #555555; /* Finestra interna */
+    background-color:rgb(21, 19, 19);
   }
 `;
 
 const ChatbotCMD: React.FC = () => {
   const [input, setInput] = useState<string>("");
-  const [messages, setMessages] = useState<{ sender: "user" | "bot"; text: string }[]>([]);
-  const [specialMessages, setSpecialMessages] = useState<string[]>([]); // Array per messaggi speciali
+  const [messages, setMessages] = useState<{ sender: "user" | "bot"; text: string; style?: React.CSSProperties }[]>([]);
+  const [specialMessages, setSpecialMessages] = useState<string[]>([]);
+  const [awaitingAnswer, setAwaitingAnswer] = useState(false); 
+  const [questionAsked, setQuestionAsked] = useState(false);
+  const [gameFinished, setGameFinished] = useState(false); // Nuovo stato per terminare il gioco
+
   const chatRef = useRef<HTMLDivElement>(null);
 
-  // Funzione per ottenere la risposta del bot
   const getBotResponse = (message: string): string => {
     const text = message.toLowerCase();
-    if (text.includes("pasta")) return "Ciao! Come posso aiutarti?";
-    if (text.includes("pomodoro")) return "Sto bene! E tu?";
-    if (text.includes("acqua")) return "";
-    return "Non ho capito, puoi riformulare?";
+    if (text.includes("salita")) return "Ogni percorso inizia dal basso e procede verso l'alto. Anche il tuo percorso sarà in salita, quindi continua e non fermarti mai.";
+    if (text.includes("precisione")) return "La precisione perfeziona ogni passo, ma non hai tempo ed energie per eseguire la perfezione.";
+    if (text.includes("distruzione")) return "La distruzione del vecchio lascia spazio al nuovo, ma non hai niente da distruggere se c'è solo il vuoto.";
+    if (text.includes("movimento")) return "Non fermarti mai. Muoviti avanti, muoviti indietro, ma muoviti senza sosta e non ti perderai mai.";
+    if (text.includes("illusione")) return "L'illusione può darti uno strappo alla monotonia, ma sai bene che non durerà a lungo.";
+    if (text.includes("confusione")) return "Non ti perderai mai se segui il tuo percorso. Anche quando attraverserai la nebbia della confusione, diventerai la tua stessa luce.";
+    return "Sembra che questo non ti sarà utile. Prova con qualcosa di diverso.";
   };
 
-  // Funzione per inviare i messaggi
+  const requiredSpecialWords = ["salita", "movimento","confusione"];
+
   const sendMessage = () => {
     if (input.trim() === "") return;
 
-    const userMessage: { sender: "user" | "bot"; text: string } = { sender: "user", text: input };
-    const botMessage: { sender: "user" | "bot"; text: string } = { sender: "bot", text: getBotResponse(input) };
+    const userMessage = { sender: "user" as const, text: input };
+    let botMessage: { sender: "bot"; text: string; style?: React.CSSProperties };
 
-    setMessages((prev) => [...prev, userMessage, botMessage]);
+    if (awaitingAnswer) {
+      if (input.toLowerCase() === "percorso") {
+        botMessage = { 
+          sender: "bot", 
+          text: "codice rosso", 
+          style: { color: "red", fontWeight: "bold" } 
+        };
+        setGameFinished(true);
+        setAwaitingAnswer(false);
+      } else {
+        botMessage = { 
+          sender: "bot", 
+          text: "Di solito, puoi fidarti della sola metà dei consigli che ti sono dati" 
+        };
+      }
+    } else {
+      botMessage = { sender: "bot", text: getBotResponse(input) };
 
-    // Se il messaggio contiene determinate parole, aggiungilo all'array dei messaggi speciali
-    if (input.toLowerCase().includes("pasta") || input.toLowerCase().includes("pomodoro") || input.toLowerCase().includes("acqua")) {
-      setSpecialMessages((prev) => [...prev, input]);
+      const currentWord = input.toLowerCase();
+      // Verifica se la parola è speciale e non è già stata usata
+      if (requiredSpecialWords.includes(currentWord) && !specialMessages.includes(currentWord)) {
+        setSpecialMessages(prev => [...prev, currentWord]);
+      }
     }
 
+    setMessages(prev => [...prev, userMessage, botMessage]);
     setInput("");
   };
 
-  // Effetto per lo scrolling automatico
+  useEffect(() => {
+    if (specialMessages.length === 3 && !questionAsked) {
+      setMessages(prev => [...prev, { 
+        sender: "bot", 
+        text: "Con l'esperienza che hai acquisito, rispondi a questo dilemma con una singola parola. Qual è il senso dell'avventura?" 
+      }]);
+      setAwaitingAnswer(true);
+      setQuestionAsked(true);
+    }
+  }, [specialMessages, questionAsked]);
+
+  useEffect(() => {
+  }, [gameFinished]);
+
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
@@ -87,7 +109,7 @@ const ChatbotCMD: React.FC = () => {
   return (
     <ThemeProvider theme={original}>
       <GlobalStyles />
-      <Window style={{ width: 350, height: 400, display: "flex", flexDirection: "column"}}>
+      <Window style={{ width: 350, height: 400, display: "flex", flexDirection: "column" }}>
         <WindowHeader style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Avatar square size={20} src="https://upload.wikimedia.org/wikipedia/commons/3/3a/Cat03.jpg" />
           cmd.2060
@@ -101,7 +123,7 @@ const ChatbotCMD: React.FC = () => {
             display: "flex",
             flexDirection: "column",
             gap: "5px",
-            maxHeight: "230px" // Limita lo spazio per il contenuto della chat
+            maxHeight: "230px"
           }}>
             {messages.map((msg, index) => (
               <div key={index} style={{
@@ -115,9 +137,8 @@ const ChatbotCMD: React.FC = () => {
                   background: msg.sender === "bot" ? "#F0F0F0" : "#D0E4F7",
                   maxWidth: "70%",
                   textAlign: "left",
-                  border: specialMessages.includes(msg.text) ? '2px solid green' : 'none', // Evidenzia i messaggi speciali
                 }}>
-                  {msg.text}
+                  <span style={msg.style || {}}>{msg.text}</span>
                 </Frame>
               </div>
             ))}
@@ -136,6 +157,6 @@ const ChatbotCMD: React.FC = () => {
       </Window>
     </ThemeProvider>
   );
-}
+};
 
 export default ChatbotCMD;
